@@ -1,18 +1,80 @@
-
-# Database Design 
+# Database Design
 
 ### Users
+
 id — uuid, PK
 name — varchar
 email — varchar, nullable, unique
 phone — varchar, unique, not null
 avatar_url — varchar, nullable
+role                string      – can remove
+role_id	          uuid FK → roles.id
+status              string
 is_active — boolean, default true
+invited_at          timestamp
+joined_at           timestamp
+last_active_at      timestamp
 created_at — timestamp
 updated_at — timestamp
 deleted_at — timestamp, nullable
+invited_by_user_id  uuid FK → users.id
+
+### roles
+id                string PK
+label             string
+is_super_admin    boolean
+is_system_locked  boolean
+sort_order        int
+
+### permissions
+id        uuid PK
+key       string        -- e.g. "view_users"
+module    string        -- e.g. "users"
+label     string        -- UI label
+
+###  role_permissions
+id              uuid PK
+role_id        string FK → roles.id
+permission_id  uuid FK → permissions.id
+granted        boolean
+
+### user_permission_overrides
+id              uuid PK
+user_id         uuid FK → users.id
+permission_id   uuid FK → permissions.id
+granted         boolean
+set_by_user_id  uuid FK → users.id
+created_at      timestamp
+
+### modules
+id                     uuid PK
+key                    string        -- e.g. "billing"
+label                  string
+
+### module_permission_requirements
+id               uuid PK
+module_id        uuid FK → modules.id
+permission_id    uuid FK → permissions.id
+requirement_type string   -- e.g. "ALL", "ANY"
+
+### audit_log
+id                uuid PK
+actor_user_id     uuid FK → users.id
+entity_type       string   -- "ROLE", "PERMISSION", "MODULE", etc.
+entity_id         uuid     -- ID of affected record
+action            string   -- "CREATE", "UPDATE", "DELETE", "ASSIGN_PERMISSION"
+changes           jsonb    -- structured diff
+metadata          jsonb    -- optional context
+created_at        timestamp
+
+<!-- 👉 Tracks:
+Role changes
+Permission updates
+User actions -->
+
 
 ### Sessions
+
 id — uuid, PK
 user_id — uuid, FK → users
 refresh_token — varchar, unique
@@ -21,6 +83,7 @@ expires_at — timestamp
 created_at — timestamp
 
 ### Societies
+
 id — uuid, PK
 name — varchar
 reg_number — varchar, nullable
@@ -39,6 +102,7 @@ updated_at — timestamp
 deleted_at — timestamp, nullable
 
 ### Wings
+
 id — uuid, PK
 society_id — uuid, FK → societies
 name — varchar (A Wing, Tower 1, Block B)
@@ -47,6 +111,7 @@ created_at — timestamp
 deleted_at — timestamp, nullable
 
 ### Units
+
 id — uuid, PK
 society_id — uuid, FK → societies
 wing_id — uuid, FK → wings
@@ -61,6 +126,7 @@ updated_at — timestamp
 deleted_at — timestamp, nullable
 
 ### Residents
+
 id — uuid, PK
 user_id — uuid, FK → users
 society_id — uuid, FK → societies
@@ -73,9 +139,8 @@ created_at — timestamp
 updated_at — timestamp
 deleted_at — timestamp, nullable
 
-
-
 ### Guards
+
 id — uuid, PK
 user_id — uuid, FK → users
 society_id — uuid, FK → societies
@@ -87,6 +152,7 @@ updated_at — timestamp
 deleted_at — timestamp, nullable
 
 ### Vehicles
+
 id — uuid, PK
 society_id — uuid, FK → societies
 unit_id — uuid, FK → units
@@ -98,6 +164,7 @@ created_at — timestamp
 deleted_at — timestamp, nullable
 
 ### Visitors
+
 id — uuid, PK
 society_id — uuid, FK → societies
 unit_id — uuid, FK → units
@@ -119,6 +186,7 @@ created_at — timestamp
 updated_at — timestamp
 
 ### Gates
+
 id — uuid, PK
 society_id — uuid, FK → societies
 name — varchar (Main Gate, Gate 2)
@@ -129,6 +197,7 @@ updated_at — timestamp
 deleted_at — timestamp, nullable
 
 ### Shifts
+
 id — uuid, PK
 society_id — uuid, FK → societies
 name — varchar (Morning, Evening, Night)
@@ -139,6 +208,7 @@ created_at — timestamp
 updated_at — timestamp
 
 ### Guard_Shifts
+
 id — uuid, PK
 guard_id — uuid, FK → guards
 society_id — uuid, FK → societies
@@ -152,6 +222,7 @@ created_at — timestamp
 updated_at — timestamp
 
 ### Visitor_Logs
+
 id — uuid, PK
 society_id — uuid, FK → societies
 visitor_id — uuid, FK → visitors
@@ -165,6 +236,7 @@ status — enum (IN, OUT)
 created_at — timestamp
 
 ### Guard_Attendance
+
 id — uuid, PK
 guard_id — uuid, FK → guards
 society_id — uuid, FK → societies
@@ -174,6 +246,7 @@ guard_shift_id — uuid, FK → guard_shifts, nullable
 created_at — timestamp
 
 ### Complaints
+
 id — uuid, PK
 society_id — uuid, FK → societies
 resident_id — uuid, FK → residents
@@ -189,8 +262,8 @@ remarks — text, nullable
 created_at — timestamp
 updated_at — timestamp
 
-
 ### Notices
+
 id — uuid, PK
 society_id — uuid, FK → societies
 created_by — uuid, FK → users
@@ -207,6 +280,7 @@ updated_at — timestamp
 deleted_at — timestamp, nullable
 
 ### Amenities
+
 id — uuid, PK
 society_id — uuid, FK → societies
 name — varchar (Clubhouse, Gym, Swimming Pool)
@@ -220,6 +294,7 @@ created_at — timestamp
 deleted_at — timestamp, nullable
 
 ### Amenity_bookings
+
 id — uuid, PK
 amenity_id — uuid, FK → amenities
 resident_id — uuid, FK → residents
@@ -232,8 +307,8 @@ created_at — timestamp
 updated_at — timestamp
 UNIQUE constraint on (amenity_id, date, slot_start)
 
-
 ### Maintenance_Bills
+
 id — uuid, PK
 society_id — uuid, FK → societies
 unit_id — uuid, FK → units
@@ -251,6 +326,7 @@ updated_at — timestamp
 UNIQUE constraint on (society_id, unit_id, month, year)
 
 ### Payments
+
 id — uuid, PK
 bill_id — uuid, FK → bills, unique
 resident_id — uuid, FK → residents
@@ -266,6 +342,7 @@ paid_at — timestamp
 created_at — timestamp
 
 ### Activity_logs
+
 id — uuid PK
 society_id — uuid, indexed
 actor_id — uuid
@@ -280,6 +357,7 @@ Type, data, metadata
 timestamp — ISODate, TTL index 1 year
 
 ### community_posts
+
 id — uuid, PK
 society_id — uuid, FK → societies
 resident_id — uuid, FK → residents
@@ -294,6 +372,7 @@ updated_at — timestamp
 deleted_at — timestamp, nullable
 
 ### community_comments
+
 id — uuid, PK
 post_id — uuid, FK → community_posts
 resident_id — uuid, FK → residents
@@ -306,6 +385,7 @@ updated_at — timestamp
 deleted_at — timestamp, nullable
 
 ### community_reactions
+
 id — uuid, PK
 resident_id — uuid, FK → residents
 target_type — enum (POST, COMMENT)
@@ -315,6 +395,7 @@ created_at — timestamp
 UNIQUE constraint on (resident_id, target_type, target_id)
 
 ### community_polls
+
 id — uuid, PK
 post_id — uuid, FK → community_posts, unique
 question — varchar
@@ -322,12 +403,14 @@ expires_at — timestamp, nullable
 created_at — timestamp
 
 ### community_poll_options
+
 id — uuid, PK
 poll_id — uuid, FK → community_polls
 option_text — varchar
 created_at — timestamp
 
 ### community_poll_votes
+
 id — uuid, PK
 poll_id — uuid, FK → community_polls
 option_id — uuid, FK → community_poll_options
@@ -336,6 +419,7 @@ created_at — timestamp
 UNIQUE constraint on (poll_id, resident_id) — one vote per resident per poll
 
 ### Events
+
 id — uuid, PK
 post_id — uuid, FK → community_posts, unique
 title — varchar
@@ -346,6 +430,7 @@ cover_photo_url — varchar, nullable
 created_at — timestamp
 
 ### Event_rsvps
+
 id — uuid, PK
 event_id — uuid, FK → community_events
 resident_id — uuid, FK → residents
@@ -354,6 +439,7 @@ created_at — timestamp
 UNIQUE constraint on (event_id, resident_id)
 
 ### Property_Listings
+
 id — uuid, PK
 society_id — uuid, FK → societies
 unit_id — uuid, FK → units
@@ -380,12 +466,14 @@ updated_at — timestamp
 deleted_at — timestamp, nullable
 
 ### Property_Favorites
+
  id — uuid, PK
  user_id — uuid, FK → users
  listing_id — uuid, FK → property_listings
  created_at — timestamp
 
 ### Property_Inquiries
+
 id — uuid, PK
 listing_id — uuid, FK → property_listings
 buyer_user_id — uuid, FK → users
@@ -396,6 +484,7 @@ created_at — timestamp
  updated_at — timestamp
 
 ### Conversations
+
 id — uuid, PK
 listing_id — uuid, FK → property_listings
 buyer_user_id — uuid, FK → users
@@ -407,6 +496,7 @@ updated_at — timestamp
 UNIQUE constraint on (listing_id, buyer_user_id, owner_user_id)
 
 ### Messages
+
 id — uuid, PK
 conversation_id — uuid, FK → conversations
 sender_id — uuid, FK → users
@@ -418,6 +508,7 @@ created_at — timestamp
 updated_at — timestamp
 
 ### Message_Reads
+
 id — uuid, PK
 message_id — uuid, FK → messages
 user_id — uuid, FK → users
@@ -425,6 +516,7 @@ read_at — timestamp
 UNIQUE constraint on (message_id, user_id)
 
 ### User_Blocks
+
 id — uuid, PK
 blocker_user_id — uuid, FK → users
 blocked_user_id — uuid, FK → users
@@ -433,8 +525,8 @@ created_at — timestamp
 updated_at — timestamp, nullable
 deleted_at — timestamp, nullable
 
-
 ### Helpers
+
 id — uuid, PK
 society_id — uuid, FK → societies
 name — varchar
@@ -448,7 +540,8 @@ created_at — timestamp
 updated_at — timestamp
 deleted_at — timestamp, nullable
 
-### Helper_Unit_Map 
+### Helper_Unit_Map
+
 id — uuid, PK
 helper_id — uuid, FK → helpers
 unit_id — uuid, FK → units
@@ -458,5 +551,10 @@ time_slot — varchar, nullable
 is_active — boolean, default true
 created_at — timestamp
 updated_at — timestamp
+
+
+
+
+
 
 
